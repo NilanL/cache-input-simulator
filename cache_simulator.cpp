@@ -10,12 +10,13 @@
     Notes:
         > Blocks and associativity cannot be over 65535 (0xffff)
             >> Will return -1073741819 if input is too high
-        > Does not currently handle type exception cases
         > Does not currently empty cache
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
 #include <iostream>
 #include <iomanip>
+#include <exception>
+#include <limits>
 #include <stdio.h>
 #include "cache_set.h"
 #include <stdlib.h>
@@ -24,6 +25,7 @@ using namespace std;
 
 class Operations {
     public:
+        //** Gets the number of digits in an integer **//
         unsigned short get_digits_amount(short n)
         {
             short temp = n;
@@ -36,6 +38,32 @@ class Operations {
             }
 
             return counter;
+        }
+
+        //** Outputs error message based on its code **//
+        void print_error(int n)
+        {
+            switch (n)
+            {
+                case 100:
+                    cout << "ERROR - Blocks amount must be positive and a multiple of 2" << endl;
+                    break;
+                case 102:
+                    cout << "ERROR - Set associativity must be positive and a multiple of 2" << endl;
+                    break;
+                case 110:
+                    cout << "ERROR - Invalid input, must be a positive integer (0 - 65536)" << endl;
+                    break;
+            }
+        }
+
+        //** Validates the continue input **//
+        bool is_continue_valid(char input)
+        {
+            if (input == 'y' || input == 'Y') return true;
+            if (input == 'n' || input == 'N') return true;
+
+            return false;
         }
 };
 
@@ -73,7 +101,7 @@ class Cache {
             this->associativity = assoc;
             this->set_amount = total_block_amount / associativity;
 
-            this->set_array = new cache_set [associativity];
+            this->set_array = new cache_set [set_amount];
 
             // Initializes each set and its blocks
             for (int i = 0; i < set_amount; i++)
@@ -116,7 +144,7 @@ class Cache {
         }
 
         //** Finds spot in cache to input data
-        void input_data(short n)
+        void input_data(unsigned short n)
         {
             unsigned short input_index = n % set_amount; // Determines the set index to input into
             unsigned short LRU = set_array[input_index].LRU_index;
@@ -204,9 +232,10 @@ class Cache {
 int main()
 {
     unsigned short blocks_input, associativity_input;
-    short data_input;
+    int data_input;
     char continue_input;
     bool input_error;
+    Operations oper;
 
     cout << "**NOTE: Blocks are filled from start position zero and the replacement policy is LRU (Least Recently Used)**" << endl << endl;
     cout << "----------------Cache Simulator----------------" << endl;
@@ -215,20 +244,20 @@ int main()
     {
         try
         {
-            input_error = false;
+            input_error = false; // Loop stops
             cout << "Number of blocks in cache: ";
             cin >> blocks_input;
 
-            // Determines if input is negative or not a multiple of 2
-            if (blocks_input < 0 || blocks_input % 2)
-            {
-                throw (blocks_input);
-            }
+            if (cin.fail()) throw (110); // Invalid input
+
+            if (blocks_input < 0 || blocks_input % 2) throw (100); // Negative and/or non-two multiple
         }
-        catch (unsigned short input)
+        catch (int error)
         {
-            input_error = true;
-            cout << "ERROR - Blocks amount must be positive and a multiple of 2" << endl;
+            input_error = true; // Loop runs
+            cin.clear(); // Clears bad flag
+            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Discards input
+            oper.print_error(error);
         }
     } while (input_error);
 
@@ -239,20 +268,20 @@ int main()
     {
         try
         {
-            input_error = false;
+            input_error = false; // Loop stops
             cout << "Reading operations set associativity: ";
             cin >> associativity_input;
 
-            // Determines if input is negative or not a multiple of 2
-            if (associativity_input < 0 || associativity_input % 2)
-            {
-                throw (associativity_input);
-            }
+            if (cin.fail()) throw (110); // Invalid input
+
+            if (associativity_input < 0 || associativity_input % 2) throw (102); // Negative and/or non-two multiple
         }
-        catch (unsigned short input)
+        catch (int error)
         {
-            input_error = true;
-            cout << "ERROR - Set associativity must be positive and a multiple of 2" << endl;
+            input_error = true; // Loop runs
+            cin.clear(); // Clears bad flag
+            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Discards input
+            oper.print_error(error);
         }
     } while (input_error);
 
@@ -263,13 +292,36 @@ int main()
 
     do
     {
-        cout << "Data input: ";
-        cin >> data_input;
+        do
+        {
+            try
+            {
+                input_error = false; // Loop stops
+                cout << "Data input: ";
+                cin >> data_input;
 
-        _cache.input_data(data_input);
+                if (cin.fail() || data_input < 0 || data_input > 65536) throw (110); // Invalid input
+            }
+            catch (int error)
+            {
+                input_error = true; // Loop runs
+                cin.clear(); // Clears bad flag
+                cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Discards input
+                oper.print_error(error);
+            }
+        } while (input_error);
+
+        _cache.input_data((unsigned short)data_input); // Inserts into cache
 
         cout << "Continue (Y/N): ";
         cin >> continue_input;
+
+        // Loops until continue input is either Y or N
+        while (!oper.is_continue_valid(continue_input))
+        {
+            cout << "Continue (Y/N): ";
+            cin >> continue_input;
+        }
     } while (continue_input == 'y' || continue_input == 'Y');
 
     // Prints the cache
