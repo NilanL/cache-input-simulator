@@ -15,11 +15,29 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
 #include <iostream>
+#include <iomanip>
 #include <stdio.h>
 #include "cache_set.h"
 #include <stdlib.h>
 
 using namespace std;
+
+class Operations {
+    public:
+        unsigned short get_digits_amount(short n)
+        {
+            short temp = n;
+            unsigned short counter = 0;
+
+            while (temp != 0)
+            {
+                counter++;
+                temp /= 10;
+            }
+
+            return counter;
+        }
+};
 
 class Cache {
     private:
@@ -31,6 +49,7 @@ class Cache {
     public:
         unsigned short hits;
         unsigned short misses;
+        unsigned short data_max_digits; // Stores the longest number's digits
 
     public:
         //** Default constructor
@@ -42,6 +61,8 @@ class Cache {
 
             this->hits = 0;
             this->misses = 0;
+
+            this->data_max_digits = 0;
         }
 
         //** Parameterized constructor
@@ -70,10 +91,12 @@ class Cache {
 
             this->hits = 0;
             this->misses = 0;
+
+            this->data_max_digits = 0;
         }
 
         //** Get/Set for associativity
-        unsigned short get_associativity(unsigned short n)
+        unsigned short get_associativity()
         {
             return associativity;
         }
@@ -83,7 +106,7 @@ class Cache {
         }
 
         //** Get/Set for total_block_amount
-        unsigned short get_block_amount(unsigned short n)
+        unsigned short get_block_amount()
         {
             return total_block_amount;
         }
@@ -97,6 +120,12 @@ class Cache {
         {
             unsigned short input_index = n % set_amount; // Determines the set index to input into
             unsigned short LRU = set_array[input_index].LRU_index;
+            unsigned short curr_digits;
+            Operations oper;
+
+            // Determines if the current number has more digits
+            curr_digits = oper.get_digits_amount(n);
+            if (curr_digits > data_max_digits) data_max_digits = curr_digits;
 
             // Determines if all blocks are filled
             if (set_array[input_index].blocks[associativity - 1] != -1)
@@ -137,13 +166,13 @@ class Cache {
                     }
                 }
 
-                // Determines least recently used block
                 set_array[input_index].blocks[LRU] = n;
                 set_array[input_index].LRU_index += 1;
 
-                if (set_array[input_index].LRU_index == associativity)
+                // Determines if the LRU_index is an invalid index
+                if (set_array[input_index].LRU_index > associativity - 1)
                 {
-                    set_array[input_index].LRU_index = 0;
+                    set_array[input_index].LRU_index = 0; // Back to first block
                 }
             }
         }
@@ -151,17 +180,17 @@ class Cache {
         //** Outputs the data in each set and block
         void print()
         {
-            for (int i = 0; i < set_amount; i++)
+            for (int i = 0; i < set_amount; i++) // Traverse through each set
             {
-                for (int j = 0; j < associativity; j++)
+                for (int j = 0; j < associativity; j++) // Traverse through each block
                 {
                     if (set_array[i].blocks[j] != -1)
                     {
-                        cout << "Data in set# " << i << " block " << j << ": " << "[ " << set_array[i].blocks[j] << " ]" << endl;
+                        cout << "Data in set# " << i << " block " << j << ": " << "[ " << left << setw((int)data_max_digits) << set_array[i].blocks[j] << " ]" << endl;
                     }
                     else
                     {
-                        cout << "Data in set# " << i << " block " << j << ": " << "[ empty ]" << endl;
+                        cout << "Data in set# " << i << " block " << j << ": " << "[-empty-]" << endl;
                     }
                 }
                 cout << endl;
