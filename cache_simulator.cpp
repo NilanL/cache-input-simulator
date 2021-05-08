@@ -10,8 +10,6 @@
     Notes:
         > Blocks and associativity cannot be over 65535 (0xffff)
             >> Will return -1073741819 if input is too high
-        > get_digits_amount moved into Cache class as a private
-            helper function to avoid deallocation confusion
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
 #include <iostream>
@@ -38,13 +36,13 @@ class Operations {
             switch (n)
             {
                 case 100:
-                    cout << "ERROR - Blocks amount must be positive and a multiple of 2" << endl;
+                    cout << "ERROR " << "(code " << n << ") - Blocks amount must be positive and a multiple of 2" << endl;
                     break;
                 case 102:
-                    cout << "ERROR - Set associativity must be positive and a multiple of 2" << endl;
+                    cout << "ERROR " << "(code " << n << ") - Set associativity must be positive and a multiple of 2" << endl;
                     break;
                 case 110:
-                    cout << "ERROR - Invalid input, must be a positive integer (0 - 65536)" << endl;
+                    cout << "ERROR " << "(code " << n << ") - Invalid input, must be a positive integer (0 - 65536)" << endl;
                     break;
             }
         }
@@ -69,6 +67,8 @@ class Cache {
     public:
         unsigned short hits;
         unsigned short misses;
+        unsigned short block_replacements;
+        unsigned short total_inputs;
         unsigned short data_max_digits; // Stores the longest number's digits
 
     private:
@@ -97,6 +97,8 @@ class Cache {
 
             this->hits = 0;
             this->misses = 0;
+            this->block_replacements = 0;
+            this->total_inputs = 0;
 
             this->data_max_digits = 0;
         }
@@ -127,6 +129,8 @@ class Cache {
 
             this->hits = 0;
             this->misses = 0;
+            this->block_replacements = 0;
+            this->total_inputs = 0;
 
             this->data_max_digits = 0;
         }
@@ -151,12 +155,24 @@ class Cache {
             this->total_block_amount = n;
         }
 
+        //** Get/Set for set_amount
+        unsigned short get_set_amount()
+        {
+            return set_amount;
+        }
+        void set_set_amount(unsigned short n)
+        {
+            this->set_amount = n;
+        }
+
         //** Finds spot in cache to input data
         void input_data(unsigned short n)
         {
             unsigned short input_index = n % set_amount; // Determines the set index to input into
             unsigned short LRU = set_array[input_index].LRU_index;
             unsigned short curr_digits;
+
+            this->total_inputs += 1;
 
             // Determines if the current number has more digits
             curr_digits = get_digits_amount(n);
@@ -201,6 +217,8 @@ class Cache {
                     }
                 }
 
+                this->block_replacements += 1;
+
                 set_array[input_index].blocks[LRU] = n;
                 set_array[input_index].LRU_index += 1;
 
@@ -231,8 +249,12 @@ class Cache {
                 cout << endl;
             }
 
-            cout << "Cache Hits: " << this->hits << endl;
-            cout << "Cache Misses: " << this->misses << endl;
+            this->misses = total_inputs - hits;
+
+            cout << "Total Inputs: " << total_inputs << endl;
+            cout << "Cache Hits: " << hits << endl;
+            cout << "Cache Misses: " << misses << endl;
+            cout << "Block Replacements: " << block_replacements << endl;
         }
 
         //** Disposes of the elements within the cache **//
