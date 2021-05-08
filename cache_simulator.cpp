@@ -2,7 +2,7 @@
     Name: Cache data-input simulator
     Author: Nilan Larios
     Date: 5/6/2021
-    Update: 5/6/2021
+    Update: 5/7/2021
 
     Description: Simulates the input of data into a cache-like data structure
     using an "Last Recently Used" replacement policy and set associativity.
@@ -10,7 +10,8 @@
     Notes:
         > Blocks and associativity cannot be over 65535 (0xffff)
             >> Will return -1073741819 if input is too high
-        > Does not currently empty cache
+        > get_digits_amount moved into Cache class as a private
+            helper function to avoid deallocation confusion
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
 #include <iostream>
@@ -21,25 +22,16 @@
 #include "cache_set.h"
 #include <stdlib.h>
 
+//-------------Memory Leak Detecting Macros-------------//
+/*
+#define DEBUG_NEW new(__FILE__, __LINE__)
+#define new DEBUG_NEW
+*/
+
 using namespace std;
 
 class Operations {
     public:
-        //** Gets the number of digits in an integer **//
-        unsigned short get_digits_amount(short n)
-        {
-            short temp = n;
-            unsigned short counter = 0;
-
-            while (temp != 0)
-            {
-                counter++;
-                temp /= 10;
-            }
-
-            return counter;
-        }
-
         //** Outputs error message based on its code **//
         void print_error(int n)
         {
@@ -78,6 +70,22 @@ class Cache {
         unsigned short hits;
         unsigned short misses;
         unsigned short data_max_digits; // Stores the longest number's digits
+
+    private:
+        //** Gets the number of digits in an integer **//
+        unsigned short get_digits_amount(short n)
+        {
+            short temp = n;
+            unsigned short counter = 0;
+
+            while (temp != 0)
+            {
+                counter++;
+                temp /= 10;
+            }
+
+            return counter;
+        }
 
     public:
         //** Default constructor
@@ -149,10 +157,9 @@ class Cache {
             unsigned short input_index = n % set_amount; // Determines the set index to input into
             unsigned short LRU = set_array[input_index].LRU_index;
             unsigned short curr_digits;
-            Operations oper;
 
             // Determines if the current number has more digits
-            curr_digits = oper.get_digits_amount(n);
+            curr_digits = get_digits_amount(n);
             if (curr_digits > data_max_digits) data_max_digits = curr_digits;
 
             // Determines if all blocks are filled
@@ -227,6 +234,17 @@ class Cache {
             cout << "Cache Hits: " << this->hits << endl;
             cout << "Cache Misses: " << this->misses << endl;
         }
+
+        //** Disposes of the elements within the cache **//
+        void dipose_cache_elements()
+        {
+            for (int i = 0; i < set_amount; i++)
+            {
+                delete[] set_array[i].blocks;
+            }
+
+            delete[] set_array;
+        }
 };
 
 int main()
@@ -235,7 +253,7 @@ int main()
     int data_input;
     char continue_input;
     bool input_error;
-    Operations oper;
+    Operations oper; // To access global helper functions
 
     cout << "**NOTE: Blocks are filled from start position zero and the replacement policy is LRU (Least Recently Used)**" << endl << endl;
     cout << "----------------Cache Simulator----------------" << endl;
@@ -287,7 +305,7 @@ int main()
 
     // Creates the cache
     cout << endl;
-    Cache _cache(blocks_input, associativity_input);
+    Cache *_cache = new Cache(blocks_input, associativity_input);
     cout << "Virtual cache created..." << endl;
 
     do
@@ -311,7 +329,7 @@ int main()
             }
         } while (input_error);
 
-        _cache.input_data((unsigned short)data_input); // Inserts into cache
+        _cache->input_data((unsigned short)data_input); // Inserts into cache
 
         cout << "Continue (Y/N): ";
         cin >> continue_input;
@@ -327,7 +345,13 @@ int main()
     // Prints the cache
     cout << endl;
     cout << "Printing cache..." << endl;
-    _cache.print();
+    _cache->print();
+
+    // Disposes the cache
+    cout << endl;
+    cout << "Disposing cache..." << endl;
+    _cache->dipose_cache_elements();
+    delete _cache;
 
     return 0;
 }
