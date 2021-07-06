@@ -2,7 +2,7 @@
     Name: Cache data-input simulator
     Author: Nilan Larios
     Date: 5/6/2021
-    Update: 5/7/2021
+    Update: 7/5/2021
 
     Description: Simulates the input of data into a cache-like data structure
     using an "Last Recently Used" replacement policy and set associativity.
@@ -10,15 +10,19 @@
     Notes:
         > Blocks and associativity cannot be over 65535 (0xffff)
             >> Will return -1073741819 if input is too high
+        > Output file will be created wherever the .exe is located
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
 #include <iostream>
 #include <iomanip>
 #include <exception>
 #include <limits>
+#include <iostream>
+#include <fstream>
+
 #include <stdio.h>
-#include "cache_set.h"
 #include <stdlib.h>
+#include "cache_set.h"
 
 //-------------Memory Leak Detecting Macros-------------//
 /*
@@ -257,6 +261,38 @@ class Cache {
             cout << "Block Replacements: " << block_replacements << endl;
         }
 
+        //** Outputs the data in each set and block to a file
+        void write_file()
+        {
+            ofstream outFile("cache_output.txt");
+
+            outFile << "----------------Your Cache Output----------------" << endl;
+            for (int i = 0; i < set_amount; i++) // Traverse through each set
+            {
+                for (int j = 0; j < associativity; j++) // Traverse through each block
+                {
+                    if (set_array[i].blocks[j] != -1)
+                    {
+                        outFile << "Data in set# " << i << " block " << j << ": " << "[ " << left << setw((int)data_max_digits) << set_array[i].blocks[j] << " ]" << endl;
+                    }
+                    else
+                    {
+                        outFile << "Data in set# " << i << " block " << j << ": " << "[-empty-]" << endl;
+                    }
+                }
+                outFile << endl;
+            }
+
+            this->misses = total_inputs - hits;
+
+            outFile << "Total Inputs: " << total_inputs << endl;
+            outFile << "Cache Hits: " << hits << endl;
+            outFile << "Cache Misses: " << misses << endl;
+            outFile << "Block Replacements: " << block_replacements << endl;
+
+            outFile.close();
+        }
+
         //** Disposes of the elements within the cache **//
         void dipose_cache_elements()
         {
@@ -273,74 +309,27 @@ int main()
 {
     unsigned short blocks_input, associativity_input;
     int data_input;
-    char continue_input;
+    char continue_input, write_cache_to_file, create_new_cache = 'y';
     bool input_error;
     Operations oper; // To access global helper functions
 
-    cout << "**NOTE: Blocks are filled from start position zero and the replacement policy is LRU (Least Recently Used)**" << endl << endl;
-    cout << "----------------Cache Simulator----------------" << endl;
-
-    do
+    while (create_new_cache == 'Y' || create_new_cache == 'y')
     {
-        try
-        {
-            input_error = false; // Loop stops
-            cout << "Number of blocks in cache: ";
-            cin >> blocks_input;
+        system("cls");
+        cout << "**NOTE: Blocks are filled from start position zero and the replacement policy is LRU (Least Recently Used)**" << endl << endl;
+        cout << "----------------Cache Simulator----------------" << endl;
 
-            if (cin.fail()) throw (110); // Invalid input
-
-            if (blocks_input < 0 || blocks_input % 2) throw (100); // Negative and/or non-two multiple
-        }
-        catch (int error)
-        {
-            input_error = true; // Loop runs
-            cin.clear(); // Clears bad flag
-            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Discards input
-            oper.print_error(error);
-        }
-    } while (input_error);
-
-    cout << endl;
-    cout << "(For 4-way set associative input \"4\")" << endl;
-
-    do
-    {
-        try
-        {
-            input_error = false; // Loop stops
-            cout << "Reading operations set associativity: ";
-            cin >> associativity_input;
-
-            if (cin.fail()) throw (110); // Invalid input
-
-            if (associativity_input < 0 || associativity_input % 2) throw (102); // Negative and/or non-two multiple
-        }
-        catch (int error)
-        {
-            input_error = true; // Loop runs
-            cin.clear(); // Clears bad flag
-            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Discards input
-            oper.print_error(error);
-        }
-    } while (input_error);
-
-    // Creates the cache
-    cout << endl;
-    Cache *_cache = new Cache(blocks_input, associativity_input);
-    cout << "Virtual cache created..." << endl;
-
-    do
-    {
         do
         {
             try
             {
                 input_error = false; // Loop stops
-                cout << "Data input: ";
-                cin >> data_input;
+                cout << "Number of blocks in cache: ";
+                cin >> blocks_input;
 
-                if (cin.fail() || data_input < 0 || data_input > 65536) throw (110); // Invalid input
+                if (cin.fail()) throw (110); // Invalid input
+
+                if (blocks_input < 0 || blocks_input % 2) throw (100); // Negative and/or non-two multiple
             }
             catch (int error)
             {
@@ -351,29 +340,112 @@ int main()
             }
         } while (input_error);
 
-        _cache->input_data((unsigned short)data_input); // Inserts into cache
+        cout << endl;
+        cout << "(For 4-way set associative input \"4\")" << endl;
 
-        cout << "Continue (Y/N): ";
-        cin >> continue_input;
-
-        // Loops until continue input is either Y or N
-        while (!oper.is_continue_valid(continue_input))
+        do
         {
+            try
+            {
+                input_error = false; // Loop stops
+                cout << "Reading operations set associativity: ";
+                cin >> associativity_input;
+
+                if (cin.fail()) throw (110); // Invalid input
+
+                if (associativity_input < 0 || associativity_input % 2) throw (102); // Negative and/or non-two multiple
+            }
+            catch (int error)
+            {
+                input_error = true; // Loop runs
+                cin.clear(); // Clears bad flag
+                cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Discards input
+                oper.print_error(error);
+            }
+        } while (input_error);
+
+        // Creates the cache
+        cout << endl;
+        Cache *_cache = new Cache(blocks_input, associativity_input);
+        cout << "Virtual cache created..." << endl;
+
+        do
+        {
+            do
+            {
+                try
+                {
+                    input_error = false; // Loop stops
+                    cout << "Data input: ";
+                    cin >> data_input;
+
+                    if (cin.fail() || data_input < 0 || data_input > 65536) throw (110); // Invalid input
+                }
+                catch (int error)
+                {
+                    input_error = true; // Loop runs
+                    cin.clear(); // Clears bad flag
+                    cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Discards input
+                    oper.print_error(error);
+                }
+            } while (input_error);
+
+            _cache->input_data((unsigned short)data_input); // Inserts into cache
+
             cout << "Continue (Y/N): ";
             cin >> continue_input;
+            while (!oper.is_continue_valid(continue_input)) // Loops until continue_input is either Y or N
+            {
+                cout << "Continue (Y/N): ";
+                cin >> continue_input;
+            }
+        } while (continue_input == 'y' || continue_input == 'Y');
+
+        // Prints the cache
+        cout << endl;
+        cout << "Printing cache..." << endl;
+        cout << "----------------------------------------------" << endl;
+        _cache->print();
+        cout << "----------------------------------------------" << endl;
+
+        // Writes cache to a file
+        cout << endl;
+        cout << "Would you like to write your cache to a file (Y/N): ";
+        cin >> write_cache_to_file;
+        while (!oper.is_continue_valid(write_cache_to_file)) // Loops until print_cache_to_file is either Y or N
+        {
+            cout << "Would you like to write your cache to a file (Y/N): ";
+            cin >> write_cache_to_file;
         }
-    } while (continue_input == 'y' || continue_input == 'Y');
 
-    // Prints the cache
-    cout << endl;
-    cout << "Printing cache..." << endl;
-    _cache->print();
+        if (write_cache_to_file == 'y' || write_cache_to_file == 'Y')
+        {
+            _cache->write_file();
+            cout << "Cache written to \"cache_output.txt\"" << endl;
+        }
 
-    // Disposes the cache
+        // Determines whether or not to create a new cache
+        cout << endl;
+        cout << "Would you like to create another cache (Y/N): ";
+        cin >> create_new_cache;
+        while (!oper.is_continue_valid(create_new_cache)) // Loops until create_new_cache is either Y or N
+        {
+            cout << "Would you like to create another cache (Y/N): ";
+            cin >> create_new_cache;
+        }
+
+        // Disposes the cache
+        cout << endl;
+        cout << "Disposing cache..." << endl;
+        _cache->dipose_cache_elements();
+        delete _cache;
+    }
+
+    // Exit prompt for program
     cout << endl;
-    cout << "Disposing cache..." << endl;
-    _cache->dipose_cache_elements();
-    delete _cache;
+    cout << "Press any key to exit" << endl;
+    cin.get();
+    cin.get();
 
     return 0;
 }
